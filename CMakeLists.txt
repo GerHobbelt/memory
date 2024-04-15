@@ -46,6 +46,7 @@ endif()
 include(cmake/configuration.cmake)
 include(cmake/atomic.cmake)
 include(cmake/get_container_node_sizes.cmake)
+include(cmake/package.cmake)
 
 # subdirectories
 add_subdirectory(src)
