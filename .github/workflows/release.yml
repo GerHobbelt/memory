@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "**"
+
+jobs:
+  ubuntu_amd64:
+    strategy:
+      fail-fast: false
+      matrix:
+        image_ver:
+          - 20.04_v1
+          - 22.04_v1
+          - 24.04_v1
+        sharedlibs: [ON]
+        build_type: [Release]
+
+    runs-on: ubuntu-latest
+    container:
+      image: juhaoming/ubuntu-compile-dev:${{matrix.image_ver}}
+      options: --user root
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create Build Environment
+        run: cmake -E make_directory build
+
+      - name: Configure
+        working-directory: build/
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DBUILD_SHARED_LIBS=${{matrix.sharedlibs}} -DCMAKE_INSTALL_PREFIX=/opt/cp3
+
+      - name: Build
+        working-directory: build/
+        run: cmake --build . --config ${{matrix.build_type}}
+
+      - name: Test
+        working-directory: build/
+        run: ctest -C ${{matrix.build_type}} --output-on-failure
+
+      - name: Build package
+        working-directory: build/
+        run: make package
+
+      - name: Archive deb files
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-on-${{matrix.image_ver}}
+          path: build/packages/*.deb
+
+  upload:
+    needs: ubuntu_amd64
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build/packages
+          merge-multiple: true
+
+      - name: ls-deb
+        run: ls build/packages
+
+      - run: gh release create $GITHUB_REF_NAME build/packages/*.deb --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+        shell: bash
+        name: Creates a release in GitHub and uploads attachments

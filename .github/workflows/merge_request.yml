@@ -1,0 +1,44 @@
+name: MergeRequestCI
+
+on:
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        gcc:
+          - 11.4.0  # for 22.04
+          - 9.4.0   # for 20.04
+        sharedlibs: [OFF, ON]
+        build_type: [Debug, Release]
+
+    runs-on: ubuntu-latest
+    container:
+      image: gcc:${{matrix.gcc}}
+      options: --user root
+
+    steps:
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.14.x'
+      - name: Use cmake
+        run: cmake --version
+
+      - uses: actions/checkout@v2
+      - name: Create Build Environment
+        run: cmake -E make_directory build
+      - name: Configure
+        working-directory: build/
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=${{matrix.build_type}} -DBUILD_SHARED_LIBS=${{matrix.sharedlibs}}
+      - name: Build
+        working-directory: build/
+        run: cmake --build . --config ${{matrix.build_type}}
+      - name: Test
+        working-directory: build/
+        run: ctest -C ${{matrix.build_type}} --output-on-failure
