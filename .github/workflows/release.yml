@@ -11,6 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         image_ver:
+          - 18.04_v1
           - 20.04_v1
           - 22.04_v1
           - 24.04_v1
@@ -23,7 +24,12 @@ jobs:
       options: --user root
 
     steps:
+      - uses: SpicyPizza/create-envfile@v2.0
+        with:
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
       - uses: actions/checkout@v4
+
       - name: Create Build Environment
         run: cmake -E make_directory build
 
